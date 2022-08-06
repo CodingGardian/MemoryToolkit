@@ -1,5 +1,5 @@
-#include <base/memory/ram.h>
-
+//#include <base/memory/ram.h>
+#include "ram.h"
 #include <iostream>
 #include <utility>
 
@@ -83,7 +83,7 @@ void MemoryToolkit::doit() {
     dump(name);
 }
 
-void MemoryToolkit::ReportError(std::string FUNCTION) {
+/*void SMemoryToolkit::ReportError(std::string FUNCTION) {
     std::cerr << "MEMORY ERROR: "
 
-}
+}*/

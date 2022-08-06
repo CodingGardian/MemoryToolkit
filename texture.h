@@ -4,8 +4,10 @@
 #include <map>
 
 //  TODO:
-//      sequential next for header data structs
-//
+//      Finish deletion function
+//      Decide if hash table is a good thing std::vector
+//      Get rid of globals (what the fuck was I thinking?)
+//      
 //
 
 namespace CEGUI {

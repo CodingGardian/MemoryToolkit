@@ -1,10 +1,20 @@
-#include <base/memory/texture.h>
+/*#include <base/memory/texture.h>
 #include <base/memory/ram.h>
 #include <base/fileio.h>
+*/
+
+
+#include "texture.h"
+#include "ram.h"
 
 #include <sys/stat.h>
 #include <string.h>
 #include <iostream>
+#include <fstream>
+
+#ifdef WIN32
+#include "WinAPIComponent.h"
+#endif
 
 #define TEXTURE_SIZE 8 * MEGABYTE
 #define HEADER_SIZE 1 * MEGABYTE
@@ -19,7 +29,7 @@ int CEGUI::MEMORY::TEXTURE::texture_unallocated = 0;
 
 char* texture_buffer;
 int total_texture_size; // total bytes
-        
+
 char* header_buffer;
 int total_header_size; // total bytes
 
@@ -69,7 +79,7 @@ void CEGUI::MEMORY::TEXTURE::INIT_TEXTURE(int overload_bytes_texture, int overlo
 void aux_allocateheader(TextureNode* at = nullptr) { // allocates a header, which is always at the end of the metadata block (headers are not store sequentially with memory blocks)
     //std::cout << "AAAAHHH" << std::endl;
     if (header_unallocated < sizeof(TextureNode)) {
-        std::cerr << "MEMORY ERROR: CRITICAL texture.metadata MEMORY IN FUNCTION " << __PRETTY_FUNCTION__ << std::endl;
+        std::cerr << "MEMORY ERROR: CRITICAL texture.metadata MEMORY IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
         exit(-1);
     }
     // allocate at end of metadata block
@@ -139,40 +149,73 @@ TextureNode* aux_getOpenBlock(TextureNode* t = nullptr) {
     return nullptr;
 }
 
+// gets a texture at memory position, O(n) time, use sparingly. Returns null on fail
+TextureNode* aux_getAt(void* pos) {
+    TextureNode* temp = head;
+    do {
+        if (temp->mem == static_cast<int*>(pos)) {
+            return temp;
+        }
+        else { temp = temp->seqnext; }
 
-/*TextureNode* aux_getBefore(TextureNode* t) { // avoid use, O(n) time
+
+    } while (temp->seqnext != head);
+
+    return nullptr;
+}
+
+TextureNode* aux_getBefore(TextureNode* t) { // avoid use, O(n) time
     for (TextureNode* i=head; (char*)i < unalloc_start_metadata; i = i->seqnext) {
         if (i->seqnext == t) {
             return i;
         }
     }
 
-    std::cerr << "MEMORY ERROR: UNEXPECTED FAIL IN FUNCTION: " << __PRETTY_FUNCTION__ << std::endl;
+    std::cerr << "MEMORY ERROR: UNEXPECTED FAIL IN FUNCTION: " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
     exit(-1);
-}*/
+}
+
+#ifdef WIN32
+const wchar_t* GetWC(const char* c)
+{
+    const size_t cSize = strlen(c) + 1;
+    wchar_t* wc = new wchar_t[cSize];
+    mbstowcs(wc, c, cSize);
+
+    return wc;
+}
+
+WAPIFileIO fIOthing;
+#endif
 
 // this is pain
 // 48 bytes (should be) allocated in the header space for every texture of any size. Less if working with a 32 or 16 bit CPU
 TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
-    struct stat tempstat;
     int size;
+#ifndef WIN32
+    struct stat tempstat;
     if (stat(filename, &tempstat) == 0) {
         size = tempstat.st_size;   
     }
     else {
-        std::cerr << "FILE IO ERROR: STAT FUNCTION FAILED IN FUNCTION " << __PRETTY_FUNCTION__ << std::endl;
+        std::cerr << "FILE IO ERROR: STAT FUNCTION FAILED IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
     }
     size -= 8; // two integers at the start of the file describe the length and width of the file
+#endif
+
+#ifdef WIN32
+    fIOthing.OpenFile(filename)
+#endif
 
     std::ifstream temp_fstream;
     temp_fstream.open( filename, std::ios::binary | std::ios::in );
     if (!temp_fstream.good()) {
-        std::cerr << "MEMORY ERROR: FAILED TO OPEN " << filename << " IN FUNCTION " << __PRETTY_FUNCTION__ << std::endl;
+        std::cerr << "MEMORY ERROR: FAILED TO OPEN " << filename << " IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
         exit(-1);
     }
 
     if (size > texture_unallocated) {
-        std::cerr << "MEMORY ERROR: CRITICAL texture MEMORY IN FUNCTION " << __PRETTY_FUNCTION__ << std::endl;
+        std::cerr << "MEMORY ERROR: CRITICAL texture MEMORY IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
         exit(-1);
     }
 
@@ -197,7 +240,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
         unalloc_start_texture += size*4;
 
         // fill with data
-        temp_fstream.read((char*)tail->mem, (size*4));
+        temp_fstream.read((char*)tail->mem, (size_t)(size)*4);
         return tail;
     }
     else {
@@ -218,13 +261,13 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
             TextureNode* temp_prev = temp_next;
 
             // fill with data
-            temp_fstream.read((char*)temp_next->mem, ((end-start)*4));
+            temp_fstream.read((char*)temp_next->mem, ((size_t)(end-start)*4));
             
             while(1) {
                 // check if another block is open
                 TextureNode* temp_loop = aux_getOpenBlock(temp_next);
                 
-                if (temp_loop = nullptr) {
+                if (temp_loop == nullptr) {
                     // block is not open, allocate at end of list
                     TextureNode* temp_end = tail;
 
@@ -234,7 +277,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
                     temp_prev->next = tail;
                     
                     // fill up space
-                    temp_fstream.read((char*)tail->mem,(size*4));
+                    temp_fstream.read((char*)tail->mem,(size_t)(size)*4);
 
                     // fill up rest of node
                     temp_end->len = size;
@@ -260,7 +303,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
                         size -= (end-start);
 
                         // fill with data
-                        temp_fstream.read((char*)temp_next->mem, ((end-start)*4));
+                        temp_fstream.read((char*)temp_next->mem, ((size_t)(end-start)*4));
 
                         temp_next->len = (end-start);
                         temp_next->vspan = l_w[0];
@@ -268,7 +311,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
                     }
                     else {
                         
-                        temp_fstream.read((char*)temp_next->mem, (size*4));
+                        temp_fstream.read((char*)temp_next->mem, (size_t)(size)*4);
 
                         temp_next->len = size;
                         temp_next->vspan = l_w[0];
@@ -280,7 +323,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
         }
         else {
             // fill with data
-            temp_fstream.read((char*)temp_next->mem, (size*4));
+            temp_fstream.read((char*)temp_next->mem, (size_t)(size)*4);
 
             temp_next->len = size;
             temp_next->vspan = l_w[0];
@@ -293,29 +336,30 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
 }
 
 // NOTE: decrement linked list texture header pointers and such to account for the memory being moved
-void deallocate(TextureNode* node) {
+// this is not efficient, potential solutions:
+// hash table (longer allocation, but allows memory deletion to have more chance of being O(1) best case)
+// ?
+/*void deallocate(TextureNode* node) {
     // this will be hard
     //  no need to delete memory since it will be overwritten
     if (node == head) {std::cerr << "H E C K  O F F" << std::endl; exit(-1);}
-
+    if (node == tail) { TextureNode* temp = aux_getBefore(tail); temp->next = nullptr; tail = temp; return; }
     // This checks if memory is split
     if (node->next == nullptr) {
+        // memory is not split
 
-        // sort through the list and find all nodes that will be shifted
-        TextureNode* temp_node = head;
-        
+        int temp_len = node->len;
+        TextureNode* temp = node;
+
         do {
-            if (temp_node->seqnext > node) {
-                TextureNode* temp = temp_node;
-                temp = temp_node;
-                temp_node->seqnext -= sizeof(TextureNode);
-            }
+            temp = aux_getAt(temp + temp->len); // get the next memory block
+            memcpy(temp - temp->len, temp, temp->len);
 
-            
-        } while (temp_node != head);
+        } while (temp != tail);
+      
         
 
-        // move the memory
+        
     }
     else {
         // if it is:
@@ -337,4 +381,4 @@ void deallocate(TextureNode* node) {
 
 void resize(TextureNode* t) { // NO MORE TORTURE PLEASE IM LITERALLY DYING ON THE INSIDE HECK
     // AAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHH
-}
+}*/
