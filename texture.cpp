@@ -204,7 +204,8 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
 #endif
 
 #ifdef WIN32
-    fIOthing.OpenFile(filename)
+    //fIOthing.OpenFile(filename); fix wchar_t
+
 #endif
 
     std::ifstream temp_fstream;
@@ -240,7 +241,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
         unalloc_start_texture += size*4;
 
         // fill with data
-        temp_fstream.read((char*)tail->mem, (size_t)(size)*4);
+        temp_fstream.read((char*)tail->mem, (size)*4);
         return tail;
     }
     else {
@@ -261,7 +262,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
             TextureNode* temp_prev = temp_next;
 
             // fill with data
-            temp_fstream.read((char*)temp_next->mem, ((size_t)(end-start)*4));
+            temp_fstream.read((char*)temp_next->mem, (end-start)*4);
             
             while(1) {
                 // check if another block is open
@@ -277,7 +278,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
                     temp_prev->next = tail;
                     
                     // fill up space
-                    temp_fstream.read((char*)tail->mem,(size_t)(size)*4);
+                    temp_fstream.read((char*)tail->mem,(size)*4);
 
                     // fill up rest of node
                     temp_end->len = size;
@@ -303,7 +304,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
                         size -= (end-start);
 
                         // fill with data
-                        temp_fstream.read((char*)temp_next->mem, ((size_t)(end-start)*4));
+                        temp_fstream.read((char*)temp_next->mem, (end-start)*4);
 
                         temp_next->len = (end-start);
                         temp_next->vspan = l_w[0];
@@ -311,7 +312,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
                     }
                     else {
                         
-                        temp_fstream.read((char*)temp_next->mem, (size_t)(size)*4);
+                        temp_fstream.read((char*)temp_next->mem, (size)*4);
 
                         temp_next->len = size;
                         temp_next->vspan = l_w[0];

@@ -15,6 +15,8 @@ char* CEGUI::MEMORY::buff = nullptr;
 std::map<const char*, int> CEGUI::MEMORY::memory_alloc; // amout allocated
 std::map<const char*, char*> CEGUI::MEMORY::memory_ptr; // pointer for each
 
+// std::map<const char*, MemoryBuffer*> membuff;
+
 void CEGUI::MEMORY::INIT_MEM(int overload_bytes) {
     if (overload_bytes == 0) {
         buff = new char[INITIAL_MEMORY];

@@ -10,10 +10,54 @@
 //      
 //
 
+
+// Idea: Create interface for window class
+
 namespace CEGUI {
     namespace MEMORY {
         class MemoryToolkit;
         namespace TEXTURE {
+
+            class TextureBuffer : public IMemoryBuffer {
+            private:
+                // functions
+
+
+            public: 
+               /* struct TextureNode {
+                    TextureNode* next; // the next block if the data is split, nullptr if this is the whole block
+                    TextureNode* seqnext; // the header of the next block. TextureNodes are not stored sequentially in memory.
+
+                    int* mem;
+                    int vspan; // height (in pixels)
+                    int width; // width (in pixels)
+
+                    int hashpos; // position within the hash table
+
+                    int len; // size of the block (in pixels), can be less than vspan*width because of continued memory 
+                };*/
+
+
+            private:
+                CEGUI::MEMORY::MemoryToolkit mt_header;
+                CEGUI::MEMORY::MemoryToolkit mt;
+
+                char* texture_buffer;
+                int total_texture_size;
+
+                char* header_buffer;
+                int total_header_size;
+
+                char* unalloc_start_header;
+                char* unalloc_start_texture;
+
+            public:
+
+
+                int header_unallocated;
+                int texture_unallocated;
+
+            };
 
             extern int header_unallocated;
             extern int texture_unallocated;
@@ -33,6 +77,8 @@ namespace CEGUI {
                 int* mem;
                 int vspan; // height (in pixels)
                 int width; // width (in pixels)
+
+                int hashpos; // position within the hash table
 
                 int len; // size of the block (in pixels), can be less than vspan*width because of continued memory 
             };
