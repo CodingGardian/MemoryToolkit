@@ -1,6 +1,10 @@
 #include "WinAPIComponent.h"
 #include <iostream>
 
+IBaseInterface::~IBaseInterface() {}
+
+IWindowsAPIComponent::~IWindowsAPIComponent() {}
+
 WAPIFileIO::WAPIFileIO() {}
 
 WAPIFileIO::~WAPIFileIO() {}

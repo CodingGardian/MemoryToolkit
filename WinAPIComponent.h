@@ -4,15 +4,21 @@
 #include "definitions.h"
 #include <windows.h>
 
+#include "BaseInterface.h"
+
 // how the fuck do I change char to wchar without messing up cross-compatability
 
 #define WAPI_COMPONENT : public IWindowsAPIComponent
 
-class IWindowsAPIComponent {
+using namespace BASEINTERFACE;
+
+class IWindowsAPIComponent {//: public IBaseInterface {
 public:
 	virtual ~IWindowsAPIComponent() = 0;
 
 };
+
+
 
 // TODO: Seperate... good enough for now tho
 class WAPIFileIO WAPI_COMPONENT {
@@ -25,7 +31,8 @@ public:
 
 	UINT32 GetFileSize2(HANDLE);
 
-
+	int load() { return 0; }
+	int unload() { return 0; }
 };
 
 class WAPIThread WAPI_COMPONENT {
@@ -33,5 +40,9 @@ public:
 	WAPIThread();
 	~WAPIThread();
 
+
+	int load();
+
+	int unload();
 	// TODO: finish later
 };

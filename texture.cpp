@@ -3,23 +3,24 @@
 #include <base/fileio.h>
 */
 
+#define _CRT_SECURE_NO_WARNINGS
+
+
 
 #include "texture.h"
-#include "ram.h"
 
 #include <sys/stat.h>
 #include <string.h>
 #include <iostream>
 #include <fstream>
 
-#ifdef WIN32
-#include "WinAPIComponent.h"
-#endif
 
 #define TEXTURE_SIZE 8 * MEGABYTE
 #define HEADER_SIZE 1 * MEGABYTE
 
 using namespace CEGUI::MEMORY::TEXTURE;
+
+using CEGUI::MEMORY::unknown;
 
 CEGUI::MEMORY::MemoryToolkit* CEGUI::MEMORY::TEXTURE::mt_header;
 CEGUI::MEMORY::MemoryToolkit* CEGUI::MEMORY::TEXTURE::mt;
@@ -41,7 +42,36 @@ bool check_block; // set to true when a block is deleted
 TextureNode* head; // head node ALWAYS points to start of memory block, and ALWAYS at the start of header data block
 TextureNode* tail; // points to the end of the list
 
-void CEGUI::MEMORY::TEXTURE::INIT_TEXTURE(int overload_bytes_texture, int overload_bytes_header) {
+MTextureBuffer::~MTextureBuffer() {}
+
+MTextureBuffer::MTextureBuffer(const char* name, int header_size, int texture_size) : m_name(name), m_total_header_size(header_size), m_total_texture_size(texture_size) { 
+    m_start = nullptr; 
+    if (CEGUI::MEMORY::AddEntry(this, m_name, (unknown&)m_start, (m_total_header_size + m_total_texture_size)) == INSUFFICIENT_SPACE)
+    {
+        std::cout << "Insufficient space for memory allocation in MtextureBuffer allocation" << std::endl;
+        exit(-1);
+    }
+
+    m_header_unallocated = m_total_header_size;
+    m_texture_unallocated = total_texture_size;
+
+    m_header_buffer = m_start;
+    m_texture_buffer = m_start + m_total_header_size;
+
+    std::string stemp(m_name), stemp2(m_name);
+    stemp += "_header";
+    stemp2 += "_texture";
+    m_header_toolkit = GetMemToolkit(stemp.c_str(), { (unknown)m_start, (unknown)(m_start + m_total_header_size) } );
+    m_texture_toolkit = GetMemToolkit(stemp2.c_str(), { (unknown)m_texture_buffer, (unknown)(m_texture_buffer + m_total_texture_size) } );
+
+}
+
+// IT'S A FUCKING LVALUE YOU DUMB AS FUCK COMPILER, I DID NOT SPEND HOURS CODING THIS ONLY TO GET ASS FUCKED BY THIS DUMB FUCKING ERROR MESSAGE
+// TODO: FIX THIS FUCKING BULLSHIT (ok I fugured it out it took like 2 mins but I'm still mad and not deleting this)
+// void MTextureBuffer::start() { // CEGUI::MEMORY::AddEntry(this, m_name, (void*&)m_start, (m_total_header_size + m_total_texture_size)); }
+
+
+/*void CEGUI::MEMORY::TEXTURE::INIT_TEXTURE(int overload_bytes_texture, int overload_bytes_header) {
     if (overload_bytes_header == 0) { // header buffer contains linked list
         header_buffer = CEGUI::MEMORY::ADD_ENTRY("texture.metadata", HEADER_SIZE);
         unalloc_start_metadata = header_buffer;
@@ -70,16 +100,15 @@ void CEGUI::MEMORY::TEXTURE::INIT_TEXTURE(int overload_bytes_texture, int overlo
         texture_unallocated = overload_bytes_texture;
     }
 
-    // why :(
     mt_header = new CEGUI::MEMORY::MemoryToolkit("texture.metadata");
     mt = new CEGUI::MEMORY::MemoryToolkit("texture");
     check_block = false;
-}
+}*/
 
-void aux_allocateheader(TextureNode* at = nullptr) { // allocates a header, which is always at the end of the metadata block (headers are not store sequentially with memory blocks)
+void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header, which is always at the end of the metadata block (headers are not store sequentially with memory blocks, so a vector is implemented where sequential handles are stored)
     //std::cout << "AAAAHHH" << std::endl;
     if (header_unallocated < sizeof(TextureNode)) {
-        std::cerr << "MEMORY ERROR: CRITICAL texture.metadata MEMORY IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
+        std::cerr << "MEMORY ERROR: CRITICAL HEADER MEMORY IN CLASSNAME " << m_name << std::endl;
         exit(-1);
     }
     // allocate at end of metadata block
@@ -129,7 +158,7 @@ void aux_allocateheader(TextureNode* at = nullptr) { // allocates a header, whic
     }
 }
 
-TextureNode* aux_getOpenBlock(TextureNode* t = nullptr) {
+TextureNode* MTextureBuffer::aux_getOpenBlock(TextureNode* t) {
     if (check_block == false) {
         check_block = true;
         return nullptr;
@@ -150,7 +179,7 @@ TextureNode* aux_getOpenBlock(TextureNode* t = nullptr) {
 }
 
 // gets a texture at memory position, O(n) time, use sparingly. Returns null on fail
-TextureNode* aux_getAt(void* pos) {
+TextureNode* MTextureBuffer::aux_getAt(void* pos) {
     TextureNode* temp = head;
     do {
         if (temp->mem == static_cast<int*>(pos)) {
@@ -164,7 +193,7 @@ TextureNode* aux_getAt(void* pos) {
     return nullptr;
 }
 
-TextureNode* aux_getBefore(TextureNode* t) { // avoid use, O(n) time
+TextureNode* MTextureBuffer::aux_getBefore(TextureNode* t) { // avoid use, O(n) time
     for (TextureNode* i=head; (char*)i < unalloc_start_metadata; i = i->seqnext) {
         if (i->seqnext == t) {
             return i;
@@ -188,9 +217,9 @@ const wchar_t* GetWC(const char* c)
 WAPIFileIO fIOthing;
 #endif
 
-// this is pain
+// this is pain (fix unescessary API call)
 // 48 bytes (should be) allocated in the header space for every texture of any size. Less if working with a 32 or 16 bit CPU
-TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
+TextureNode* MTextureBuffer::allocate(const char* filename) {
     int size;
 #ifndef WIN32
     struct stat tempstat;
@@ -201,19 +230,24 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
         std::cerr << "FILE IO ERROR: STAT FUNCTION FAILED IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
     }
     size -= 8; // two integers at the start of the file describe the length and width of the file
+
 #endif
 
 #ifdef WIN32
-    //fIOthing.OpenFile(filename); fix wchar_t
+    HANDLE hfile = fIOthing.OpenFile(GetWC(filename));
+    size = fIOthing.GetFileSize2(hfile);
+    // windows API can be so much cleaner sometimes...
+    CloseHandle(hfile);
 
+    size -= 8;
 #endif
-
+    
     std::ifstream temp_fstream;
-    temp_fstream.open( filename, std::ios::binary | std::ios::in );
+    temp_fstream.open(filename, std::ios::binary | std::ios::in);
     if (!temp_fstream.good()) {
         std::cerr << "MEMORY ERROR: FAILED TO OPEN " << filename << " IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
         exit(-1);
-    }
+}
 
     if (size > texture_unallocated) {
         std::cerr << "MEMORY ERROR: CRITICAL texture MEMORY IN FUNCTION " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
@@ -340,7 +374,7 @@ TextureNode* CEGUI::MEMORY::TEXTURE::allocate(const char* filename) {
 // this is not efficient, potential solutions:
 // hash table (longer allocation, but allows memory deletion to have more chance of being O(1) best case)
 // ?
-/*void deallocate(TextureNode* node) {
+/*void MTextureBuffer::deallocate(TextureNode* node) {
     // this will be hard
     //  no need to delete memory since it will be overwritten
     if (node == head) {std::cerr << "H E C K  O F F" << std::endl; exit(-1);}
