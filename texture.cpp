@@ -66,8 +66,6 @@ MTextureBuffer::MTextureBuffer(const char* name, int header_size, int texture_si
 
 }
 
-// IT'S A FUCKING LVALUE YOU DUMB AS FUCK COMPILER, I DID NOT SPEND HOURS CODING THIS ONLY TO GET ASS FUCKED BY THIS DUMB FUCKING ERROR MESSAGE
-// TODO: FIX THIS FUCKING BULLSHIT (ok I fugured it out it took like 2 mins but I'm still mad and not deleting this)
 // void MTextureBuffer::start() { // CEGUI::MEMORY::AddEntry(this, m_name, (void*&)m_start, (m_total_header_size + m_total_texture_size)); }
 
 
