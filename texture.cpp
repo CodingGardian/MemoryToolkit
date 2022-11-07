@@ -408,8 +408,4 @@ void MTextureBuffer::deallocate(TextureNode* node) {
 
 void resize(TextureNode* t) { // NO MORE TORTURE PLEASE IM LITERALLY DYING ON THE INSIDE HECK
     // AAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHH
-<<<<<<< Updated upstream
-}*/
-=======
 }
->>>>>>> Stashed changes
