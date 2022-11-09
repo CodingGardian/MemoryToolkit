@@ -31,6 +31,11 @@ private:
 		friend class _CREATE_CORE_MEMORY_BUFFER;
 };
 
+struct BufferDescription {
+		void* ptr;
+		int size;
+};
+
 _CORE_CLASS_LIST_RM* CoreClassContainer = nullptr;
 
 
