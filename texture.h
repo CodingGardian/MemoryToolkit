@@ -87,13 +87,6 @@ namespace CEGUI {
                 int m_texture_unallocated;
                
             };
-
-            extern int header_unallocated;
-            extern int texture_unallocated;
-
-            extern CEGUI::MEMORY::MemoryToolkit* mt_header;
-            extern CEGUI::MEMORY::MemoryToolkit* mt;
-
             // when a block of memory is not enogh size  (gaps in memory being used to store new textures)
             // but there is space at another block (at the end of the texture heap or space between two other blocks)
             // texture metadata
@@ -112,12 +105,6 @@ namespace CEGUI {
 
                 int len; // size of the block (in pixels), can be less than vspan*width because of continued memory 
             };*/
-
-            void INIT_TEXTURE(int overload_bytes_texture=0, int overload_bytes_header=0); // originally allocated 8 megabytes for actual textures, 1 megabytes for metadata (linked list) but can take an overload in bytes
-            
-            TextureNode* allocate(const char* filename);
-            void deallocate(TextureNode* t);
-            void resize(TextureNode* t);
 
             // int* aux_getOpenBlock(); returns the first open space of memory
         };
