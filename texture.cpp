@@ -36,17 +36,22 @@ bool check_block; // set to true when a block is deleted*/
 
 MTextureBuffer::~MTextureBuffer() {}
 
-MTextureBuffer::MTextureBuffer(const char* name, int header_size, int texture_size) : m_name(name), m_total_header_size(header_size), m_total_texture_size(texture_size) {
+MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_size) : m_name(name), m_total_header_size(header_size), m_total_texture_size(texture_size) {
+
+		m_sizeHeaderBuffer = num_headers;
+		m_ptrFreeNodes = new TextureNode*[m_sizeHeaderBuffer];
+
+    m_start = (char*)malloc( (m_sizeHeaderBuffer * sizeof(TextureNode) ) + texture_size);
 	
-    m_start = (char*)malloc(header_size + texture_size);
+		if (m_start == nullptr) {std::cout << "AHHHHHH" << std::endl; exit(-1);} // Maybe get rid of all these abrupt exits?
+
+		m_total_texture_size = texture_size;
 	
-    m_header_unallocated = m_total_header_size;
     m_texture_unallocated = m_total_texture_size;
 
     m_header_buffer = m_start;
-    m_texture_buffer = m_start + m_total_header_size;
+    m_texture_buffer = m_start + m_numHeaders * sizeof(TextureNode);
 
-		m_unalloc_start_header = m_header_buffer;
 		m_unalloc_start_texture = m_texture_buffer;
 	
 		m_head = nullptr;
@@ -54,6 +59,14 @@ MTextureBuffer::MTextureBuffer(const char* name, int header_size, int texture_si
 
 		m_check_block = false;
 
+		// fill up free node list
+		TextureNode* temp = (TextureNode*)m_header_buffer + ( (m_sizeHeaderBuffer - 1) );
+		for (int i=1; i<=m_FreeNodeListSize; i++) {
+				m_ptrFreeNodes[m_sizeHeaderBuffer-i] = temp;
+				temp -= 1;
+		}
+		m_FreeNodeTop = m_sizeHeaderBuffer-1;
+	
 		// TODO: make this not bad
     std::string stemp(m_name), stemp2(m_name);
     stemp += "_header";
@@ -64,11 +77,14 @@ MTextureBuffer::MTextureBuffer(const char* name, int header_size, int texture_si
 		strncpy(s1, stemp.c_str(), stemp.length()+1);
 		strncpy(s2, stemp2.c_str(), stemp2.length()+1);
 
-		memspan m1 = { (unknown)m_start, (unknown)(m_start + m_total_header_size) };
+		memspan m1 = { (unknown)m_start, (unknown)(m_start + m_numHeaders*sizeof(TextureNode)) };
 		memspan m2 = { (unknown)m_texture_buffer, (unknown)(m_texture_buffer + m_total_texture_size) };
 		
     m_header_toolkit = GetMemToolkit(s1,  m1);
     m_texture_toolkit = GetMemToolkit(s2,  m2);
+
+		m_allocatedHeaders = 0;
+	
 }
 
 // void MTextureBuffer::start() { // CEGUI::MEMORY::AddEntry(this, m_name, (void*&)m_start, (m_total_header_size + m_total_texture_size)); }
@@ -110,14 +126,16 @@ MTextureBuffer::MTextureBuffer(const char* name, int header_size, int texture_si
 
 void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header. Always set up as a tail unless at is not nullptr, in which case it will be insertes infront of specified header (seqnext of ptr at will be set to new header). Headers are allways allocated at the end of header block
     //std::cout << "AAAAHHH" << std::endl;
-    if (m_header_unallocated < sizeof(TextureNode)) {
+    if (m_allocatedHeaders == m_sizeHeaderBuffer) {
         std::cerr << "MEMORY ERROR: CRITICAL HEADER MEMORY IN CLASSNAME " << m_name << std::endl;
         exit(-1);
     }
+		
     // allocate at end of metadata block
-    m_header_unallocated -= sizeof(TextureNode);
-    TextureNode* returnVal = (TextureNode*)m_unalloc_start_header;
-    m_unalloc_start_header += sizeof(TextureNode);
+    m_allocatedHeaders += 1;
+		TextureNode* returnVal = m_ptrFreeNodes[m_FreeNodeTop];
+		m_FreeNodeTop--;
+	
     // only runs when the list is empty
     if (m_head == nullptr) {
         m_head = returnVal;
@@ -132,6 +150,7 @@ void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header
         m_tail = m_head;
         return;
     }
+
 
     if (at == nullptr) {
         // fill it up
@@ -197,14 +216,14 @@ TextureNode* MTextureBuffer::aux_getAt(void* pos) {
 }
 
 TextureNode* MTextureBuffer::aux_getBefore(TextureNode* t) { // avoid use, O(n) time
-    for (TextureNode* i=m_head; (char*)i < m_unalloc_start_header; i = i->seqnext) {
+    /*for (TextureNode* i=m_head; (char*)i < m_unalloc_start_header; i = i->seqnext) {
         if (i->seqnext == t) {
             return i;
         }
     }
 
-    std::cerr << "MEMORY ERROR: UNEXPECTED FAIL IN FUNCTION: " << /*__PRETTY_FUNCTION__ <<*/ std::endl;
-    exit(-1);
+    std::cerr << "MEMORY ERROR: UNEXPECTED FAIL IN FUNCTION: " << /*__PRETTY_FUNCTION__ <<*/ //std::endl;
+    //exit(-1);
 }
 
 #ifdef WIN32
@@ -263,11 +282,13 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
     
     int* l_w = new int[2];
     temp_fstream.read((char*)l_w, 8); // read length and width into file
-		
+		TextureNode* returnVal = nullptr;
+	
     if (!temp_block) {
         aux_allocateheader(); // new header is pointed to by tail
-
+	
         // allocate tail
+				returnVal = m_tail;
         m_tail->mem = (int*)m_unalloc_start_texture;
         m_tail->len = size;
         m_tail->vspan = l_w[0];
@@ -278,7 +299,7 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
         // fill with data
         temp_fstream.read((char*)m_tail->mem, (size)*4);
 				
-        return m_tail;
+        return returnVal;
     }
     else {
         // allocate header & texture metadata
@@ -379,15 +400,15 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
 
 // NOTE: decrement linked list texture header pointers and such to account for the memory being moved (this is the most time expensive "basic" function)
 void MTextureBuffer::deallocate(TextureNode* node) {
-    // this will be hard
+	  // this will be hard
     //  no need to delete memory since it will be overwritten
-    if (node == head) {std::cerr << "H E C K  O F F" << std::endl; exit(-1);}
+    if (node == m_head) {std::cerr << "H E C K  O F F" << std::endl; exit(-1);}
 		
 		// IF NOT SPLIT
 		if (node->next == nullptr) {
 				// find block behind & after this one
-				TextureNode* node_before = aux_getBefore(node);
-				TextureNode* node_after = node->seqnext;
+				//TextureNode* node_before = aux_getBefore(node);
+				//TextureNode* node_after = node->seqnext;
 				// delete this block (remove header and move other mem)
 				
 				// set seqnext appropriatley
