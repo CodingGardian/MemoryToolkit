@@ -21,8 +21,8 @@
 namespace CEGUI {
     namespace MEMORY { //TODO: maybe create a virtual class for other memory partions
 
-        // TODO: Give unknown a better name maybe (probably definetly)
-        typedef void* unknown;
+        // TODO: Get rid of this
+        typedef char* unknown;
 
         class IMemoryBuffer {
         public:
@@ -64,7 +64,7 @@ namespace CEGUI {
 
         void END();
 
-        std::string byte_to_hex(char byte);
+        std::string byte_to_hex(unsigned char byte);
 
         // manage a chunck of memory called a span
         class MemoryToolkit {
@@ -84,7 +84,7 @@ namespace CEGUI {
             // moves the memory from the source to the destination. And fills src with zero NOT A COPY! You have memcpy for that
             //void z_mov(char* src, char* dest, size_t size);
 
-            void doit() const;
+            void dump() const;
         };
 
         

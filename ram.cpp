@@ -115,7 +115,7 @@ IMemoryBuffer* GetVaugeBuffer(const char* name) {
 char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 // had to add scope to keep the compiler from complaining
-std::string CEGUI::MEMORY::byte_to_hex(char byte) {
+std::string CEGUI::MEMORY::byte_to_hex(unsigned char byte) {
     std::string returnVal = "";
     returnVal += hex[(byte>>4)];
     returnVal += hex[(byte & 0x0F)];
@@ -124,13 +124,13 @@ std::string CEGUI::MEMORY::byte_to_hex(char byte) {
 }
 
 // "throws up" the group specified in (10 bytes per row)
-void dump(const char* name) {
-    char* mem = memory_ptr[name];
-    int size_bytes = memory_alloc[name];
-
+void MemoryToolkit::dump() const {
+		std::cout << m_name << std::endl;
+    int size_bytes = m_span.end - m_span.start;
+		unsigned char* mem1 = (unsigned char*)m_span.start;
     for (int i=0; i<size_bytes; i++) {
-        std::cout << byte_to_hex(*mem) << ' ';
-        mem++;
+        std::cout << byte_to_hex(*mem1) << ' ';
+        mem1++;
 
         if (((i+1) % 10) == 0) {
             std::cout << '\n';
@@ -144,10 +144,6 @@ MemoryToolkit::MemoryToolkit(const char* name) : m_name(name) {}
 
 MemoryToolkit* CEGUI::MEMORY::GetMemToolkit(const char* name, memspan span) {
     return new MemoryToolkit(name, span);
-}
-
-void MemoryToolkit::doit() const {
-    dump(m_name);
 }
 
 /*void SMemoryToolkit::ReportError(std::string FUNCTION) {

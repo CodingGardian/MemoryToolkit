@@ -62,7 +62,7 @@ MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_
 		// fill up free node list
 		TextureNode* temp = (TextureNode*)m_header_buffer + ( (m_sizeHeaderBuffer - 1) );
 		for (int i=1; i<=m_sizeHeaderBuffer; i++) {
-				m_ptrFreeNodes[m_sizeHeaderBuffer-i] = temp;
+				m_ptrFreeNodes[i-1] = temp;
 				temp -= 1;
 		}
 		m_FreeNodeTop = m_sizeHeaderBuffer-1;
@@ -146,7 +146,8 @@ void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header
         m_head->vspan = 0;
         m_head->width = 0;
         m_head->mem = nullptr;
-
+			
+				m_head->seqbefore = m_tail;
         m_tail = m_head;
         return;
     }
@@ -161,8 +162,10 @@ void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header
         returnVal->mem = nullptr;
         returnVal->width = 0;
         returnVal->vspan = 0;
-        
+			
+				m_head->seqbefore = returnVal;
 
+				returnVal->seqbefore = m_tail;
         m_tail->seqnext = returnVal;
         m_tail = returnVal;
     }
@@ -175,6 +178,9 @@ void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header
         returnVal->vspan = 0;
 
         returnVal->seqnext = at->seqnext;
+				returnVal->seqbefore = at;
+			
+				at->seqnext->seqbefore = returnVal;
         at->seqnext = returnVal;
     }
 }
@@ -201,8 +207,10 @@ TextureNode* MTextureBuffer::aux_getOpenBlock(TextureNode* t) {
 }
 
 // gets a texture at memory position, O(n) time, use sparingly. Returns null on fail
+
 TextureNode* MTextureBuffer::aux_getAt(void* pos) {
-    TextureNode* temp = m_head;
+  // this is a very bad idea  
+	/*TextureNode* temp = m_head;
     do {
         if (temp->mem == static_cast<int*>(pos)) {
             return temp;
@@ -212,7 +220,7 @@ TextureNode* MTextureBuffer::aux_getAt(void* pos) {
 
     } while (temp->seqnext != m_head);
 
-    return nullptr;
+    return nullptr;*/
 }
 
 TextureNode* MTextureBuffer::aux_getBefore(TextureNode* t) { // avoid use, O(n) time
@@ -397,6 +405,7 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
 
 
 // NOTE: decrement linked list texture header pointers and such to account for the memory being moved (this is the most time expensive "basic" function)
+// LETS GO BOYS O(1) TIMEEEEEEEEE
 void MTextureBuffer::deallocate(TextureNode* node) {
 	  // this will be hard
     //  no need to delete memory since it will be overwritten
@@ -404,19 +413,39 @@ void MTextureBuffer::deallocate(TextureNode* node) {
 		
 		// IF NOT SPLIT
 		if (node->next == nullptr) {
-				// find block behind & after this one
-				//TextureNode* node_before = aux_getBefore(node);
-				//TextureNode* node_after = node->seqnext;
-				// delete this block (remove header and move other mem)
+				// get all the blocks I need
+				TextureNode* tempbefore = node->seqbefore;
+				TextureNode* tempafter = node->seqnext;
 				
-				// set seqnext appropriatley
+				// set seqnext & seqbefore appropriatley
+				tempbefore->seqnext = tempafter;
+				tempafter->seqbefore = tempbefore;
+
+				// add to list of free nodes
+				m_ptrFreeNodes[++m_FreeNodeTop] = node;
+		}
+		else {
+				// IF SPLIT:
+				// find block behing and after this one and continued block
+				// set seqnext approproatley
+				// REPEAT FOR CONTINUED BLOCK UNTIL NO MORE LEFT
+
+				while (node->next != nullptr) {
+						TextureNode* tempbefore = node->seqbefore;
+						TextureNode* tempafter = node->seqnext;
+				
+						// set seqnext & seqbefore appropriatley
+						tempbefore->seqnext = tempafter;
+						tempafter->seqbefore = tempbefore;
+
+						// add to list of free nodes
+						m_ptrFreeNodes[++m_FreeNodeTop] = node;
+
+						node = node->next;
+				}
 		}
 		
-		// IF SPLIT:
-		// find block behing and after this one and continued block
-		// delete block (remove header and move other mem)
-		// set seqnext approproatley
-		// REPEAT FOR CONTINUED BLOCK UNTIL NO MORE LEFT
+		
 
     
 
@@ -425,4 +454,5 @@ void MTextureBuffer::deallocate(TextureNode* node) {
 
 void resize(TextureNode* t) { // NO MORE TORTURE PLEASE IM LITERALLY DYING ON THE INSIDE HECK
     // AAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHH
+	
 }
