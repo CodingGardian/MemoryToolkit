@@ -44,7 +44,6 @@ int main() {
 		temp_texture.GetTextureToolkit().dump();
 
 		std::cout '\n';
-		std::cout << temp_node->
 		
     CEGUI::MEMORY::END();
 
