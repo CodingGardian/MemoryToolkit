@@ -147,7 +147,7 @@ void MTextureBuffer::aux_allocateheader(TextureNode* at) { // allocates a header
         m_head->width = 0;
         m_head->mem = nullptr;
 			
-				m_head->seqbefore = m_tail;
+				m_head->seqbefore = m_head;
         m_tail = m_head;
         return;
     }
@@ -247,19 +247,19 @@ const wchar_t* GetWC(const char* c)
 WAPIFileIO fIOthing;
 #endif
 
+int FileSize(const char* filename) {
+		std::ifstream file(filename, std::ios::binary | std::ios::ate);
+		file.seekg(0, std::ios::end);
+		return file.tellg();
+}
+
 // this is pain (fix dependancy, do bridge method)
 // 48 bytes (should be) allocated in the header space for every texture of any size. Less if working with a 32 bit CPU (which is likely the case with replit)
 TextureNode* MTextureBuffer::allocate(const char* filename) {
     int size=0;
 #ifndef WIN32
-    struct stat tempstat;
-
-    if (stat(filename, &tempstat) == 0) {
-        size = tempstat.st_size;
-    }
-    else {
-        std::cout << "FILE IO ERROR: STAT FUNCTION FAILED IN FUNCTION " << std::endl;
-    }
+		size = FileSize(filename);
+    
     size -= 8; // two integers at the start of the file describe the length and width of the file
 	
 #endif

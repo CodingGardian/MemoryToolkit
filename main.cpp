@@ -1,6 +1,7 @@
 #include "texture.h"
 
 #include <iostream>
+#include <fstream>
 
 // Globals.... Everywhere.... what have I done
 
@@ -11,40 +12,38 @@
 
 int main() {
 		using namespace CEGUI::MEMORY::TEXTURE;
-    std::cout << "Hello World";
+	
     CEGUI::MEMORY::INIT_MEM();
 
-    CEGUI::MEMORY::TEXTURE::MTextureBuffer temp_texture("Test", 5, 250);
+    CEGUI::MEMORY::TEXTURE::MTextureBuffer temp_texture("Test", 10, 2500);
 
-    temp_texture.allocate("text.stuff");
-   	TextureNode* node = temp_texture.allocate("aaaahhhhh.amogus");
-		temp_texture.allocate("text.stuff");
-    /*CEGUI::MEMORY::TEXTURE::INIT_TEXTURE(110, 100);
-    CEGUI::MEMORY::TEXTURE::allocate("text.stuff");
-    CEGUI::MEMORY::TEXTURE::allocate("aaaahhhhh.amogus");
+    TextureNode* node1 = temp_texture.allocate("text.stuff");
+   	TextureNode* node2 = temp_texture.allocate("aaaahhhhh.amogus");
 
-    std::cout << "\n";
-    CEGUI::MEMORY::TEXTURE::mt->doit();
-*/
+		std::cout << "\n" << node1 << " " << node2->seqbefore;
+	
+		TextureNode* node3 = temp_texture.allocate("text.stuff");
     std::cout << '\n' << std::endl;
     temp_texture.GetHeaderToolkit().dump();
 		temp_texture.GetTextureToolkit().dump();
 
-		temp_texture.deallocate(node);
-
+		std::cout << "\n";
+		temp_texture.deallocate(node2);
+		std::cout << node1->seqnext << node3;
+	
 	 	std::cout << '\n' << std::endl;
     temp_texture.GetHeaderToolkit().dump();
 		temp_texture.GetTextureToolkit().dump();
-
-
-		TextureNode* temp_node = temp_texture.allocate("text.stuff");
+		std::cout << '\n' << std::endl;
+		
+		TextureNode* temp_node = temp_texture.allocate("aaaahhhhh2.amogus");
 
 		std::cout << '\n' << std::endl;
     temp_texture.GetHeaderToolkit().dump();
 		temp_texture.GetTextureToolkit().dump();
-
-		std::cout '\n';
-		
+		std::cout << "\n";
+		std::cout << node3->seqnext << temp_node->next;
+	
     CEGUI::MEMORY::END();
 
 	return 0;
