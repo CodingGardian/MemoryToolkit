@@ -36,7 +36,7 @@ bool check_block; // set to true when a block is deleted*/
 
 MTextureBuffer::~MTextureBuffer() {}
 
-MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_size) : m_name(name), m_total_header_size(header_size), m_total_texture_size(texture_size) {
+MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_size) : m_name(name), m_total_texture_size(texture_size) {
 
 		m_sizeHeaderBuffer = num_headers;
 		m_ptrFreeNodes = new TextureNode*[m_sizeHeaderBuffer];
@@ -50,7 +50,7 @@ MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_
     m_texture_unallocated = m_total_texture_size;
 
     m_header_buffer = m_start;
-    m_texture_buffer = m_start + m_numHeaders * sizeof(TextureNode);
+    m_texture_buffer = m_start + m_sizeHeaderBuffer * sizeof(TextureNode);
 
 		m_unalloc_start_texture = m_texture_buffer;
 	
@@ -61,7 +61,7 @@ MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_
 
 		// fill up free node list
 		TextureNode* temp = (TextureNode*)m_header_buffer + ( (m_sizeHeaderBuffer - 1) );
-		for (int i=1; i<=m_FreeNodeListSize; i++) {
+		for (int i=1; i<=m_sizeHeaderBuffer; i++) {
 				m_ptrFreeNodes[m_sizeHeaderBuffer-i] = temp;
 				temp -= 1;
 		}
@@ -77,7 +77,7 @@ MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_
 		strncpy(s1, stemp.c_str(), stemp.length()+1);
 		strncpy(s2, stemp2.c_str(), stemp2.length()+1);
 
-		memspan m1 = { (unknown)m_start, (unknown)(m_start + m_numHeaders*sizeof(TextureNode)) };
+		memspan m1 = { (unknown)m_start, (unknown)(m_start + m_sizeHeaderBuffer*sizeof(TextureNode)) };
 		memspan m2 = { (unknown)m_texture_buffer, (unknown)(m_texture_buffer + m_total_texture_size) };
 		
     m_header_toolkit = GetMemToolkit(s1,  m1);
@@ -282,13 +282,11 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
     
     int* l_w = new int[2];
     temp_fstream.read((char*)l_w, 8); // read length and width into file
-		TextureNode* returnVal = nullptr;
 	
     if (!temp_block) {
         aux_allocateheader(); // new header is pointed to by tail
 	
         // allocate tail
-				returnVal = m_tail;
         m_tail->mem = (int*)m_unalloc_start_texture;
         m_tail->len = size;
         m_tail->vspan = l_w[0];
@@ -299,7 +297,7 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
         // fill with data
         temp_fstream.read((char*)m_tail->mem, (size)*4);
 				
-        return returnVal;
+        return m_tail;
     }
     else {
         // allocate header & texture metadata

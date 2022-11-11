@@ -51,7 +51,7 @@ namespace CEGUI {
                 TextureNode* aux_getBefore(TextureNode* t);
             public: 
                 
-                MTextureBuffer(const char* name, int header_size, int texture_size);
+                MTextureBuffer(const char* name, short num_headers, int texture_size);
                 ~MTextureBuffer();
 
                 TextureNode* allocate(const char* filename);
