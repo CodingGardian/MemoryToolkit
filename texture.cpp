@@ -3,7 +3,7 @@
 #include <base/fileio.h>
 */
 
-//#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 
 // TODO: Maybe create handle system instead of pointers (2 byte shorts used instead of 4-8 byte ptrs)
 // TODO: Definitley need a hash table handle system, without it moving memory woulbe be a nightmare
@@ -38,52 +38,52 @@ MTextureBuffer::~MTextureBuffer() {}
 
 MTextureBuffer::MTextureBuffer(const char* name, short num_headers, int texture_size) : m_name(name), m_total_texture_size(texture_size) {
 
-		m_sizeHeaderBuffer = num_headers;
-		m_ptrFreeNodes = new TextureNode*[m_sizeHeaderBuffer];
+    m_sizeHeaderBuffer = num_headers;
+	m_ptrFreeNodes = new TextureNode*[m_sizeHeaderBuffer];
 
     m_start = (char*)malloc( (m_sizeHeaderBuffer * sizeof(TextureNode) ) + texture_size);
 	
-		if (m_start == nullptr) {std::cout << "AHHHHHH" << std::endl; exit(-1);} // Maybe get rid of all these abrupt exits?
+	if (m_start == nullptr) {std::cout << "AHHHHHH" << std::endl; exit(-1);} // Maybe get rid of all these abrupt exits?
 
-		m_total_texture_size = texture_size;
+	m_total_texture_size = texture_size;
 	
     m_texture_unallocated = m_total_texture_size;
 
     m_header_buffer = m_start;
     m_texture_buffer = m_start + m_sizeHeaderBuffer * sizeof(TextureNode);
 
-		m_unalloc_start_texture = m_texture_buffer;
+	m_unalloc_start_texture = m_texture_buffer;
 	
-		m_head = nullptr;
-		m_tail = nullptr;
+	m_head = nullptr;
+    m_tail = nullptr;
 
-		m_check_block = false;
+	m_check_block = false;
 
 		// fill up free node list
-		TextureNode* temp = (TextureNode*)m_header_buffer + ( (m_sizeHeaderBuffer - 1) );
-		for (int i=1; i<=m_sizeHeaderBuffer; i++) {
-				m_ptrFreeNodes[i-1] = temp;
-				temp -= 1;
-		}
-		m_FreeNodeTop = m_sizeHeaderBuffer-1;
+	TextureNode* temp = (TextureNode*)m_header_buffer + ( (m_sizeHeaderBuffer - 1) );
+	for (int i=1; i<=m_sizeHeaderBuffer; i++) {
+		m_ptrFreeNodes[i-1] = temp;
+		temp -= 1;
+	}
+	m_FreeNodeTop = m_sizeHeaderBuffer-1;
 	
 		// TODO: make this not bad
     std::string stemp(m_name), stemp2(m_name);
     stemp += "_header";
     stemp2 += "_texture";
 
-		char* s1 = new char[stemp.length() + 1];
-		char* s2 = new char[stemp2.length() + 1];
-		strncpy(s1, stemp.c_str(), stemp.length()+1);
-		strncpy(s2, stemp2.c_str(), stemp2.length()+1);
-
-		memspan m1 = { (unknown)m_start, (unknown)(m_start + m_sizeHeaderBuffer*sizeof(TextureNode)) };
-		memspan m2 = { (unknown)m_texture_buffer, (unknown)(m_texture_buffer + m_total_texture_size) };
+    char* s1 = new char[stemp.length() + 1];
+    char* s2 = new char[stemp2.length() + 1];
+    strncpy(s1, stemp.c_str(), stemp.length()+1);
+    strncpy(s2, stemp2.c_str(), stemp2.length()+1);
+    
+    memspan m1 = { (unknown)m_start, (unknown)(m_start + m_sizeHeaderBuffer*sizeof(TextureNode)) };
+    memspan m2 = { (unknown)m_texture_buffer, (unknown)(m_texture_buffer + m_total_texture_size) };
 		
     m_header_toolkit = GetMemToolkit(s1,  m1);
     m_texture_toolkit = GetMemToolkit(s2,  m2);
 
-		m_allocatedHeaders = 0;
+	m_allocatedHeaders = 0;
 	
 }
 
@@ -195,7 +195,7 @@ TextureNode* MTextureBuffer::aux_getOpenBlock(TextureNode* t) {
         if (t == nullptr) {t = m_head;}
         while(1) {
             if (t->seqnext == m_head) {break;}
-            int* temp = t->mem + t->len;
+            char* temp = t->mem + t->len;
             if (temp != t->seqnext->mem) {
                 return t;
             }
@@ -221,6 +221,7 @@ TextureNode* MTextureBuffer::aux_getAt(void* pos) {
     } while (temp->seqnext != m_head);
 
     return nullptr;*/
+    return nullptr;
 }
 
 TextureNode* MTextureBuffer::aux_getBefore(TextureNode* t) { // avoid use, O(n) time
@@ -232,6 +233,7 @@ TextureNode* MTextureBuffer::aux_getBefore(TextureNode* t) { // avoid use, O(n) 
 
     std::cerr << "MEMORY ERROR: UNEXPECTED FAIL IN FUNCTION: " << /*__PRETTY_FUNCTION__ <<*/ //std::endl;
     //exit(-1);
+    return nullptr;
 }
 
 #ifdef WIN32
@@ -248,62 +250,59 @@ WAPIFileIO fIOthing;
 #endif
 
 int FileSize(const char* filename) {
-		std::ifstream file(filename, std::ios::binary | std::ios::ate);
-		file.seekg(0, std::ios::end);
-		return file.tellg();
+	std::ifstream file(filename, std::ios::binary | std::ios::ate);
+	file.seekg(0, std::ios::end);
+	return file.tellg();
 }
 
 // this is pain (fix dependancy, do bridge method)
 // 48 bytes (should be) allocated in the header space for every texture of any size. Less if working with a 32 bit CPU (which is likely the case with replit)
+// allocation is much slower compared to memory pool, better to use this for large data
 TextureNode* MTextureBuffer::allocate(const char* filename) {
-    int size=0;
-#ifndef WIN32
-		size = FileSize(filename);
-    
-    size -= 8; // two integers at the start of the file describe the length and width of the file
-	
-#endif
-
-#ifdef WIN32
-    HANDLE hfile = fIOthing.OpenFile(GetWC(filename));
+/*#ifdef WIN32
+    /*HANDLE hfile = fIOthing.OpenFile(GetWC(filename));
     size = fIOthing.GetFileSize2(hfile);
     // windows API can be so much cleaner sometimes...
     CloseHandle(hfile);
 
     size -= 8;
-#endif
-	
+#endif*/
+		// se know that this works, but will have to investigate fstream crash...
     std::ifstream temp_fstream(filename, std::ios::binary | std::ios::in);
     if (!temp_fstream.good()) {
         std::cerr << "MEMORY ERROR: FAILED TO OPEN " << filename << " IN FUNCTION " << std::endl;
         exit(-1);
-}
+		}
 
-    if (size > m_texture_unallocated) {
-        std::cerr << "MEMORY ERROR: CRITICAL texture MEMORY IN FUNCTION " << std::endl;
-        exit(-1);
-    }
-
-    m_texture_unallocated -= size;
-    TextureNode* temp_block = aux_getOpenBlock();
-    size /= 4;
     
     int* l_w = new int[2];
     temp_fstream.read((char*)l_w, 8); // read length and width into file
+		int size = l_w[0] * l_w[1];
+		
+		if (size > m_texture_unallocated) {
+        std::cerr << "MEMORY ERROR: CRITICAL texture MEMORY IN FUNCTION " << std::endl;
+        exit(-1);
+    }
 	
+		m_texture_unallocated -= size;
+	
+    std::cout << l_w[0] * l_w[1] << " ";
+
+		TextureNode* temp_block = aux_getOpenBlock();
+
     if (!temp_block) {
         aux_allocateheader(); // new header is pointed to by tail
 	
         // allocate tail
-        m_tail->mem = (int*)m_unalloc_start_texture;
+        m_tail->mem = m_unalloc_start_texture;
         m_tail->len = size;
         m_tail->vspan = l_w[0];
         m_tail->width = l_w[1];
 
-        m_unalloc_start_texture += size*4;
+        m_unalloc_start_texture += size;
 
         // fill with data
-        temp_fstream.read((char*)m_tail->mem, (size)*4);
+        temp_fstream.read(m_tail->mem, size);
 				
         return m_tail;
     }
@@ -315,17 +314,18 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
         TextureNode* temp_next = temp_block->seqnext;
         temp_next->mem = temp_block->mem + temp_block->len;
 
-        int* start = temp_next->mem;
-        int* end = temp_next->seqnext->mem;
+        char* start = temp_next->mem;
+        char* end = temp_next->seqnext->mem;
 			
         // if block is not big enough, still fill with data and repeat aux_getOpenBlock(temp_block->next)
         if (end - start < size) {
             size -= (end - start);
+            std::cout << "Here" << std::endl;
 
             TextureNode* temp_prev = temp_next;
 
             // fill with data
-            temp_fstream.read((char*)temp_next->mem, (end-start)*4);
+            temp_fstream.read(temp_next->mem, end-start);
 
             while(1) {
                 // check if another block is open
@@ -337,11 +337,11 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
 
                     aux_allocateheader();
 
-                    m_tail->mem = (int*)m_unalloc_start_texture;
+                    m_tail->mem = m_unalloc_start_texture;
                     temp_prev->next = m_tail;
                     
                     // fill up space
-                    temp_fstream.read((char*)m_tail->mem,(size)*4);
+                    temp_fstream.read((char*)m_tail->mem, size);
 
                     // fill up rest of node
                     temp_end->len = size;
@@ -367,7 +367,7 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
                         size -= (end-start);
 
                         // fill with data
-                        temp_fstream.read((char*)temp_next->mem, (end-start)*4);
+                        temp_fstream.read(temp_next->mem, end-start);
 
                         temp_next->len = (end-start);
                         temp_next->vspan = l_w[0];
@@ -376,7 +376,7 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
                     }
                     else {
                         
-                        temp_fstream.read((char*)temp_next->mem, (size)*4);
+                        temp_fstream.read(temp_next->mem, size);
 
                         temp_next->len = size;
                         temp_next->vspan = l_w[0];
@@ -389,7 +389,7 @@ TextureNode* MTextureBuffer::allocate(const char* filename) {
         }
         else {
             // fill with data
-            temp_fstream.read((char*)temp_next->mem, (size_t)(size)*4);
+            temp_fstream.read((char*)temp_next->mem, size);
 
             temp_next->len = size;
             temp_next->vspan = l_w[0];

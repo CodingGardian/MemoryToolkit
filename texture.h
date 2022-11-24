@@ -33,7 +33,7 @@ namespace CEGUI {
                 TextureNode* seqnext; // The next block, headers are not stored sequentially in the header block, but their trail of ptrs (head --> tail) do
 								TextureNode* seqbefore;
 				
-                int* mem;
+                char* mem;
 
                 int vspan; // height (in pixels or whatever)
                 int width; // width (in pixels or whatever)
